@@ -1,24 +1,28 @@
-import cors from 'cors';
-import express from 'express';
+import cors from "cors";
+import express from "express";
 
-import { env } from 'config/env';
-import { globalErrorHandlerMiddleware } from 'utils/error';
+import { env } from "config/env";
+import { globalErrorHandlerMiddleware } from "utils/error";
+
+import { uploadRouter } from "modules/upload";
 
 const app = express();
-app.disable('x-powered-by');
+app.disable("x-powered-by");
 app.use(
   cors({
     credentials: true,
     origin: [env.CLIENT_URL],
     preflightContinue: false,
     optionsSuccessStatus: 204,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (_, res) => void res.send('Hello World'));
+app.get("/", (_, res) => void res.send("Hello World"));
+
+app.use("/api/upload", uploadRouter);
 
 app.use(globalErrorHandlerMiddleware);
 
