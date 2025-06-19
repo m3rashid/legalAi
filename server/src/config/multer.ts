@@ -2,6 +2,7 @@ import multer from "multer";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { v4 as newUuidV4 } from "uuid";
+import * as process from "node:process";
 
 const TEN_MB = 10 * 1024 * 1024;
 
@@ -9,12 +10,12 @@ export const uploadFileToDisk = multer({
   limits: { fileSize: TEN_MB },
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, "/tmp"); // Save files to /tmp directory
+      cb(null, path.join(process.cwd(), "/uploads")); // Save files to /tmp directory
     },
     filename: (req, file, cb) => {
-      cb(null, file.fieldname + "-" + newUuidV4() + path.extname(file.originalname));
-    },
-  }),
+      cb(null, "file.docx");
+    }
+  })
 });
 
 export async function removeFileFromDisk(filePaths: string[]) {
@@ -29,5 +30,5 @@ export async function removeFileFromDisk(filePaths: string[]) {
 
 export const uploadOnMemoryStorage = multer({
   limits: { fileSize: TEN_MB },
-  storage: multer.memoryStorage(),
+  storage: multer.memoryStorage()
 });

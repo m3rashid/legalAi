@@ -1,11 +1,12 @@
-import 'dotenv/config';
-import { z } from 'zod';
+import "dotenv/config";
+import { z } from "zod";
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
   PORT: z.string(),
   CLIENT_URL: z.string(),
+  OPEN_API_KEY: z.string()
 });
 
 const res = envSchema.safeParse(process.env);
