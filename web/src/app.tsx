@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent, useRef, useEffect } from "react";
 import { Upload, FileText, MessageCircle, Download, Bot, User, CheckCircle } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ export type Placeholder = {
   question: string;
 };
 
-type ChatHistory = { type: "user" | "bot"; message: string };
+type ChatHistory = { type: "user" | "bot"; message: string, isTyping?: boolean };
 
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -32,6 +32,11 @@ export function App() {
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
 
   const progress =
     placeholders.length > 0 ? ((isComplete ? placeholders.length : currentIndex) / placeholders.length) * 100 : 0;
@@ -53,12 +58,12 @@ export function App() {
 
       // Set up initial chat history
       const initialMessage = `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`;
-      const firstQuestion = placeholders.length > 0 ? placeholders[0].question : "";
 
-      setChatHistory([
-        { type: "bot", message: initialMessage },
-        { type: "bot", message: firstQuestion },
-      ]);
+      addBotMessageWithTypingEffect(initialMessage, () => {
+        if (placeholders.length > 0) {
+          addBotMessageWithTypingEffect(placeholders[0].question);
+        }
+      });
 
       setIsComplete(false);
     } catch (err: any) {
@@ -87,16 +92,10 @@ export function App() {
       if (nextIndex < placeholders.length) {
         setCurrentIndex(nextIndex);
         // Add next question to chat
-        setChatHistory((prev) => [...prev, { type: "bot", message: placeholders[nextIndex].question }]);
+        addBotMessageWithTypingEffect(placeholders[nextIndex].question);
       } else {
         setIsComplete(true);
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            type: "bot",
-            message: "Excellent! All fields have been completed. Your document is ready to be generated.",
-          },
-        ]);
+        addBotMessageWithTypingEffect("Excellent! All fields have been completed. Your document is ready to be generated.");
       }
     } catch (err: any) {
       setError("Failed to save your answer. Please try again.");
@@ -131,13 +130,64 @@ export function App() {
     }
   };
 
-  const getCurrentQuestion = (placeholders: Placeholder[]): ChatHistory => {
-    if (!placeholders || placeholders.length === 0) return { type: "bot", message: "" };
+  const addBotMessageWithTypingEffect = (
+    fullMessage: string,
+    callback?: () => void
+  ) => {
+    const thinkingTime = Math.random() * 1000 + 500;
+    const typingSpeed = 25;
 
-    const placeholder = placeholders[currentIndex];
-    if (placeholder) return { type: "bot", message: placeholder.question };
-    return { type: "bot", message: "" };
+    // Add temporary thinking indicator
+    setChatHistory((prev) => [
+      ...prev,
+      { type: "bot", message: "__thinking__", isTyping: true }
+    ]);
+
+    setTimeout(() => {
+      // Replace the last "..." with empty start of message
+      let index = 0;
+      let current = "";
+
+      const interval = setInterval(() => {
+        current += fullMessage[index];
+        index++;
+
+        setChatHistory((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            type: "bot",
+            message: current,
+            isTyping: true
+          };
+          return updated;
+        });
+
+        if (index === fullMessage.length) {
+          clearInterval(interval);
+          setChatHistory((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              type: "bot",
+              message: fullMessage
+            };
+            return updated;
+          });
+          if (callback) callback();
+        }
+      }, typingSpeed);
+    }, thinkingTime);
   };
+
+  function TypingDots() {
+    return (
+      <span className="flex space-x-1 items-end">
+      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0s]" />
+      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+    </span>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -229,8 +279,8 @@ export function App() {
                               isComplete || index < currentIndex
                                 ? "bg-green-100 text-green-800"
                                 : index === currentIndex && !isComplete
-                                ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
-                                : "bg-slate-100 text-slate-600"
+                                  ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
+                                  : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
@@ -281,12 +331,19 @@ export function App() {
                               </Avatar>
                             )}
                             <div
-                              className={`max-w-[80%] p-3 rounded-lg ${
+                              className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap ${
                                 entry.type === "user" ? "bg-blue-600 text-white ml-auto" : "bg-slate-100 text-slate-900"
                               }`}
                             >
-                              {entry.message}
+                              {entry.message === "__thinking__" ? (
+                                <TypingDots />
+                              ) : entry.isTyping ? (
+                                <span>{entry.message}</span>
+                              ) : (
+                                entry.message
+                              )}
                             </div>
+
                             {entry.type === "user" && (
                               <Avatar className="h-8 w-8 bg-slate-600">
                                 <AvatarFallback>
@@ -297,6 +354,7 @@ export function App() {
                           </div>
                         ) : null
                       )}
+                      <div ref={bottomRef} />
                     </div>
                   </ScrollArea>
 
@@ -306,13 +364,15 @@ export function App() {
                       <form onSubmit={handleAnswerSubmit} className="flex gap-2">
                         <Input
                           type="text"
+                          disabled={chatHistory.some(entry => entry.isTyping)}
                           value={currentAnswer}
                           onChange={(e) => setCurrentAnswer(e.target.value)}
                           placeholder="Type your answer here..."
                           className="flex-1"
                           autoFocus
                         />
-                        <Button type="submit" disabled={!currentAnswer.trim()}>
+                        <Button type="submit"
+                                disabled={!currentAnswer.trim() || chatHistory.some(entry => entry.isTyping)}>
                           Send
                         </Button>
                       </form>
