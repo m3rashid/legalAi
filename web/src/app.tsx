@@ -231,7 +231,7 @@ export function App() {
                           <div
                             key={index}
                             className={`p-2 rounded-lg text-sm ${
-                              index < currentIndex - 1
+                              isComplete || index < currentIndex - 1
                                 ? "bg-green-100 text-green-800"
                                 : index === currentIndex - 1 && !isComplete
                                   ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
@@ -239,7 +239,7 @@ export function App() {
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              {index < currentIndex - 1 ? (
+                              {isComplete || index < currentIndex - 1 ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
                               ) : index === currentIndex - 1 && !isComplete ? (
                                 <MessageCircle className="h-4 w-4 text-blue-600" />
