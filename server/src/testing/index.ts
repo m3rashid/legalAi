@@ -1,10 +1,7 @@
-import fs from "fs/promises";
 import mammoth from "mammoth";
 import { v4 as uuidv4 } from "uuid";
-import type { Request, Response } from "express";
 
 import { getOpenaiClient } from "config/openai";
-import { errorStatusCodes, successStatusCodes } from "utils/api";
 
 type PlaceholderType = "named" | "generic";
 type Placeholder = {
@@ -87,7 +84,7 @@ async function findPlaceholders(text: string) {
   return finalPlaceholders;
 }
 
-async function testFileUploadForPlaceholders(filePath: string) {
+export async function testFileUploadForPlaceholders(filePath: string) {
   const { value: text } = await mammoth.extractRawText({ path: filePath });
   const placeholders = await findPlaceholders(text);
 
@@ -100,21 +97,4 @@ async function testFileUploadForPlaceholders(filePath: string) {
   console.log(`Session ${sessionId} created with placeholders:`, placeholders);
 
   return { sessionId, placeholders };
-}
-
-export async function handleUploadedFile(req: Request, res: Response) {
-  if (!req.file || !req.file.path) {
-    res.status(errorStatusCodes.BAD_REQUEST).json({ error: "No file uploaded" });
-    return;
-  }
-
-  const fileExists = await fs.stat(req.file.path).catch(() => false);
-  if (!fileExists) {
-    res.status(errorStatusCodes.BAD_REQUEST).json({ error: "File does not exist" });
-    return;
-  }
-
-  const { sessionId, placeholders } = await testFileUploadForPlaceholders(req.file.path);
-
-  res.status(successStatusCodes.OK).json({ sessionId, placeholders });
 }
