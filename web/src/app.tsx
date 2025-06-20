@@ -285,7 +285,7 @@ export function App() {
                           <div
                             key={index}
                             ref={(el) => (placeholderRefs.current[index] = el) as never}
-                            className={`p-2 rounded-lg text-sm ${
+                            className={`m-2 p-2 rounded-lg text-sm ${
                               isComplete || index < currentIndex
                                 ? "bg-green-100 text-green-800"
                                 : index === currentIndex && !isComplete
@@ -301,7 +301,7 @@ export function App() {
                               ) : (
                                 <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
                               )}
-                              <span className="truncate">{placeholder.key}</span>
+                              <span>{placeholder.question}</span>
                             </div>
                           </div>
                         ))}
@@ -385,6 +385,7 @@ export function App() {
                     ) : (
                       <Button
                         onClick={handleGenerateDocument}
+                        autoFocus
                         disabled={isGenerating || chatHistory.some((entry) => entry.isTyping)}
                         className="w-full bg-green-600 hover:bg-green-700"
                       >
