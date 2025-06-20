@@ -81,7 +81,6 @@ export function App() {
       setCurrentAnswer("");
 
       // Move to next question or complete
-      console.log(currentIndex);
       if (currentIndex < placeholders.length) setCurrentIndex(currentIndex + 1);
       else {
         setIsComplete(true);

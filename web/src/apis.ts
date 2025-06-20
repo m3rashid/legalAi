@@ -15,7 +15,7 @@ export async function uploadFile(file: File) {
 export async function fillDocument(sessionId: string, placeholder: Placeholder, answer: string) {
   const res = await fetch(`${baseUrl}/api/upload/fill`, {
     method: "POST",
-    body: JSON.stringify({ sessionId, placeholder, answer }),
+    body: JSON.stringify({ sessionId, placeholderId: placeholder.id, answer }),
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) throw new Error("Failed to fill document");
