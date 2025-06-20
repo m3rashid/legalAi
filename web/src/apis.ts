@@ -1,6 +1,6 @@
 import type { Placeholder } from "@/app.tsx";
 
-const baseUrl = "http://localhost:4000";
+export const baseUrl = import.meta.env.DEV ? "http://localhost:4000" : "https://legalai.ijlalahmad.me";
 
 export async function uploadFile(file: File) {
   const formData = new FormData();

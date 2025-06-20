@@ -46,7 +46,6 @@ export function App() {
     }
   }, [currentIndex]);
 
-
   const progress =
     placeholders.length > 0 ? ((isComplete ? placeholders.length : currentIndex) / placeholders.length) * 100 : 0;
 
@@ -208,7 +207,7 @@ export function App() {
         {/* Upload UI */}
         {/* <Button
           onClick={() => {
-            fetch("http://localhost:4000/api/upload/sample")
+            fetch(`${baseUrl}/api/upload/sample`)
               .then((res) => res.blob())
               .then((blob) => {
                 const url = window.URL.createObjectURL(blob);
@@ -305,7 +304,6 @@ export function App() {
                             </div>
                           </div>
                         ))}
-
                       </div>
                     </ScrollArea>
                   </div>
