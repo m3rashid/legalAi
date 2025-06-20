@@ -1,18 +1,36 @@
+import z from "zod";
 import type { Request, Response } from "express";
-import { errorStatusCodes, successStatusCodes } from "../../../utils/api";
-import { sessions } from "./handleUploadedFile";
+
+import { sessions } from "modules/upload/helpers";
+import { errorStatusCodes, successStatusCodes } from "utils/api";
+
+const answerSubmissionSchema = z.object({
+  answer: z.string(),
+  sessionId: z.string(),
+  placeholderId: z.string(),
+});
 
 export async function handleAnswerSubmission(req: Request, res: Response) {
-  console.log(req.body);
-  const { sessionId, placeholder, answer } = req.body;
+  const resp = answerSubmissionSchema.safeParse(req.body);
+  if (!resp.success) {
+    res.status(errorStatusCodes.BAD_REQUEST).json({ message: "Invalid request body." });
+    return;
+  }
+
+  const { sessionId, placeholderId, answer } = resp.data;
+
   if (!sessions[sessionId]) {
     res.status(errorStatusCodes.NOT_FOUND).json({ message: "Session not found." });
     return;
   }
 
-  // Store the answer
-  sessions[sessionId].answers[placeholder] = answer;
-  console.log(`Session ${sessionId} - Answer for "${placeholder}": "${answer}"`);
+  const placeholder = sessions[sessionId].placeholders.find((p) => p.id === placeholderId);
+  if (!placeholder) {
+    res.status(errorStatusCodes.NOT_FOUND).json({ message: "Placeholder not found." });
+    return;
+  }
+
+  sessions[sessionId].answers[placeholderId] = answer;
 
   res.status(successStatusCodes.OK).json({ message: "Answer saved." });
 }
