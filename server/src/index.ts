@@ -2,10 +2,8 @@ import cors from "cors";
 import express from "express";
 
 import { env } from "config/env";
-import { globalErrorHandlerMiddleware } from "utils/error";
-
 import { uploadRouter } from "modules/upload";
-import { testFileUploadForPlaceholders } from "testing";
+import { globalErrorHandlerMiddleware } from "utils/error";
 
 const app = express();
 app.disable("x-powered-by");
@@ -24,9 +22,6 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (_, res) => void res.send("Hello World"));
 
 app.use("/api/upload", uploadRouter);
-
-// const filePath = "/home/genos/code/m3rashid/legalAi/sample.docx";
-// testFileUploadForPlaceholders(filePath);
 
 app.use(globalErrorHandlerMiddleware);
 
