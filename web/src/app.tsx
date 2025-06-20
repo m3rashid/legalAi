@@ -38,6 +38,15 @@ export function App() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
+  const placeholderRefs = useRef<(HTMLDivElement | null)[]>([]);
+  useEffect(() => {
+    const currentRef = placeholderRefs.current[currentIndex];
+    if (currentRef) {
+      currentRef.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [currentIndex]);
+
+
   const progress =
     placeholders.length > 0 ? ((isComplete ? placeholders.length : currentIndex) / placeholders.length) * 100 : 0;
 
@@ -204,7 +213,7 @@ export function App() {
                 <Upload className="h-5 w-5" />
                 Upload Your Document
               </CardTitle>
-              <CardDescription>Choose a .docx file with placeholders like [Company Name] or $[_____]</CardDescription>
+              <CardDescription>Choose a .docx file with placeholders like [Company Name] or [_____]</CardDescription>
             </CardHeader>
             <CardContent className="text-center">
               <div className="relative">
@@ -253,29 +262,31 @@ export function App() {
                     <h4 className="font-medium mb-3">Fields to Fill ({placeholders.length})</h4>
                     <ScrollArea className="h-72">
                       <div className="space-y-2">
-                        {placeholders.map((p, i) => (
+                        {placeholders.map((placeholder, index) => (
                           <div
-                            key={p.id}
+                            key={index}
+                            ref={(el) => (placeholderRefs.current[index] = el) as never}
                             className={`p-2 rounded-lg text-sm ${
-                              isComplete || i < currentIndex
+                              isComplete || index < currentIndex
                                 ? "bg-green-100 text-green-800"
-                                : i === currentIndex && !isComplete
+                                : index === currentIndex && !isComplete
                                   ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
                                   : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              {isComplete || i < currentIndex ? (
+                              {isComplete || index < currentIndex ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : i === currentIndex && !isComplete ? (
+                              ) : index === currentIndex && !isComplete ? (
                                 <MessageCircle className="h-4 w-4 text-blue-600" />
                               ) : (
                                 <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
                               )}
-                              <span className="truncate">{p.question}</span>
+                              <span className="truncate">{placeholder.key}</span>
                             </div>
                           </div>
                         ))}
+
                       </div>
                     </ScrollArea>
                   </div>
@@ -359,7 +370,7 @@ export function App() {
                     ) : (
                       <Button
                         onClick={handleGenerateDocument}
-                        disabled={isGenerating}
+                        disabled={isGenerating || chatHistory.some((entry) => entry.isTyping)}
                         className="w-full bg-green-600 hover:bg-green-700"
                       >
                         {isGenerating ? (
