@@ -20,7 +20,7 @@ export type Placeholder = {
   question: string;
 };
 
-type ChatHistory = { type: "user" | "bot"; message: string, isTyping?: boolean };
+type ChatHistory = { type: "user" | "bot"; message: string; isTyping?: boolean };
 
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -50,22 +50,19 @@ export function App() {
 
     try {
       const { sessionId, placeholders } = await uploadFile(file);
-      console.log(placeholders);
 
       setSessionId(sessionId);
       setPlaceholders(placeholders);
-      setCurrentIndex(0); // Start from the first question
+      setCurrentIndex(0);
+      setIsComplete(false);
 
-      // Set up initial chat history
-      const initialMessage = `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`;
+      const intro = `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`;
 
-      addBotMessageWithTypingEffect(initialMessage, () => {
+      addBotMessageWithTypingEffect(intro, () => {
         if (placeholders.length > 0) {
           addBotMessageWithTypingEffect(placeholders[0].question);
         }
       });
-
-      setIsComplete(false);
     } catch (err: any) {
       setError(err.message || "Failed to upload and process file.");
     } finally {
@@ -78,20 +75,15 @@ export function App() {
     if (!currentAnswer.trim()) return;
     if (!sessionId) throw new Error("No session ID");
 
-    // Add user answer to chat
     setChatHistory((prev) => [...prev, { type: "user", message: currentAnswer }]);
 
     try {
-      // Send answer to backend
       await fillDocument(sessionId, placeholders[currentIndex], currentAnswer);
-
       const nextIndex = currentIndex + 1;
       setCurrentAnswer("");
 
-      // Move to next question or complete
       if (nextIndex < placeholders.length) {
         setCurrentIndex(nextIndex);
-        // Add next question to chat
         addBotMessageWithTypingEffect(placeholders[nextIndex].question);
       } else {
         setIsComplete(true);
@@ -108,16 +100,14 @@ export function App() {
       if (!sessionId) throw new Error("No session ID");
 
       const response = await generateDocument(sessionId);
-
       const url = window.URL.createObjectURL(response);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", "completed_document.docx");
       document.body.appendChild(link);
       link.click();
-      link.parentNode?.removeChild(link);
+      link.remove();
 
-      // Reset state for a new document
       setSessionId(null);
       setPlaceholders([]);
       setChatHistory([]);
@@ -137,14 +127,9 @@ export function App() {
     const thinkingTime = Math.random() * 1000 + 500;
     const typingSpeed = 25;
 
-    // Add temporary thinking indicator
-    setChatHistory((prev) => [
-      ...prev,
-      { type: "bot", message: "__thinking__", isTyping: true }
-    ]);
+    setChatHistory((prev) => [...prev, { type: "bot", message: "__thinking__", isTyping: true }]);
 
     setTimeout(() => {
-      // Replace the last "..." with empty start of message
       let index = 0;
       let current = "";
 
@@ -180,40 +165,38 @@ export function App() {
 
   function TypingDots() {
     return (
-      <span className="flex space-x-1 items-end">
-      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0s]" />
-      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-    </span>
+      <span className="flex space-x-1 items-end h-4">
+        <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
+        <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+        <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+      </span>
     );
   }
 
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-200 via-white to-slate-100 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-blue-600 rounded-xl">
+            <div className="p-3 bg-blue-600 rounded-xl shadow-lg">
               <FileText className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-slate-900">Legal Document Assistant</h1>
           </div>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Upload your Word document template and I'll help you fill in all the required information through a simple
-            conversation.
+            Upload your Word document template and I'll help you fill in all the required information through a simple conversation.
           </p>
         </div>
 
-        {/* Error Alert */}
+        {/* Error */}
         {error && (
           <Alert className="mb-6 border-red-200 bg-red-50">
             <AlertDescription className="text-red-800">{error}</AlertDescription>
           </Alert>
         )}
 
-        {/* File Upload Section */}
+        {/* Upload UI */}
         {!sessionId && (
           <Card className="mb-8 border-2 border-dashed border-slate-300 hover:border-blue-400 transition-colors">
             <CardHeader className="text-center pb-4">
@@ -245,12 +228,12 @@ export function App() {
           </Card>
         )}
 
-        {/* Main Chat Interface */}
+        {/* Chat UI */}
         {sessionId && (
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Progress Sidebar */}
+            {/* Progress */}
             <div className="lg:col-span-1">
-              <Card>
+              <Card className="backdrop-blur-md bg-white/40 border border-white/30 shadow-lg rounded-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5" />
@@ -265,33 +248,31 @@ export function App() {
                     </div>
                     <Progress value={progress} className="h-2" />
                   </div>
-
                   <Separator />
-
                   <div>
                     <h4 className="font-medium mb-3">Fields to Fill ({placeholders.length})</h4>
                     <ScrollArea className="h-72">
                       <div className="space-y-2">
-                        {placeholders.map((placeholder, index) => (
+                        {placeholders.map((p, i) => (
                           <div
-                            key={index}
+                            key={p.id}
                             className={`p-2 rounded-lg text-sm ${
-                              isComplete || index < currentIndex
+                              isComplete || i < currentIndex
                                 ? "bg-green-100 text-green-800"
-                                : index === currentIndex && !isComplete
+                                : i === currentIndex && !isComplete
                                   ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
                                   : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              {isComplete || index < currentIndex ? (
+                              {isComplete || i < currentIndex ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : index === currentIndex && !isComplete ? (
+                              ) : i === currentIndex && !isComplete ? (
                                 <MessageCircle className="h-4 w-4 text-blue-600" />
                               ) : (
                                 <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
                               )}
-                              <span className="truncate">{placeholder.question}</span>
+                              <span className="truncate">{p.question}</span>
                             </div>
                           </div>
                         ))}
@@ -302,9 +283,9 @@ export function App() {
               </Card>
             </div>
 
-            {/* Chat Interface */}
+            {/* Chat Area */}
             <div className="lg:col-span-2">
-              <Card className="h-[600px] flex flex-col">
+              <Card className="h-[600px] flex flex-col backdrop-blur-lg bg-white/40 border border-white/30 shadow-lg rounded-2xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="h-5 w-5" />
@@ -314,65 +295,64 @@ export function App() {
                 </CardHeader>
 
                 <CardContent className="flex-1 flex flex-col p-0">
-                  {/* Chat History */}
                   <ScrollArea className="flex-1 p-6">
                     <div className="space-y-4 h-96 overflow-y-scroll">
-                      {chatHistory.map((entry, index) =>
-                        entry.message ? (
-                          <div
-                            key={index}
-                            className={`flex gap-3 ${entry.type === "user" ? "justify-end" : "justify-start"}`}
-                          >
-                            {entry.type === "bot" && (
-                              <Avatar className="h-8 w-8 bg-blue-600">
-                                <AvatarFallback>
-                                  <Bot className="h-4 w-4" />
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                            <div
-                              className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap ${
-                                entry.type === "user" ? "bg-blue-600 text-white ml-auto" : "bg-slate-100 text-slate-900"
-                              }`}
-                            >
-                              {entry.message === "__thinking__" ? (
-                                <TypingDots />
-                              ) : entry.isTyping ? (
-                                <span>{entry.message}</span>
-                              ) : (
-                                entry.message
-                              )}
-                            </div>
+                      {chatHistory.map((entry, index) => (
+                        <div
+                          key={index}
+                          className={`flex gap-3 ${entry.type === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          {entry.type === "bot" && (
+                            <Avatar className="h-8 w-8 bg-blue-600">
+                              <AvatarFallback>
+                                <Bot className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
 
-                            {entry.type === "user" && (
-                              <Avatar className="h-8 w-8 bg-slate-600">
-                                <AvatarFallback>
-                                  <User className="h-4 w-4" />
-                                </AvatarFallback>
-                              </Avatar>
+                          <div
+                            className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed transition-all duration-300 ease-in-out whitespace-pre-wrap ${
+                              entry.type === "user"
+                                ? "bg-blue-600 text-white ml-auto rounded-br-none shadow-md"
+                                : "bg-white/60 text-slate-900 rounded-bl-none shadow border border-white/20"
+                            }`}
+                          >
+                            {entry.message === "__thinking__" ? (
+                              <TypingDots />
+                            ) : (
+                              entry.message
                             )}
                           </div>
-                        ) : null
-                      )}
+
+                          {entry.type === "user" && (
+                            <Avatar className="h-8 w-8 bg-slate-600">
+                              <AvatarFallback>
+                                <User className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      ))}
                       <div ref={bottomRef} />
                     </div>
                   </ScrollArea>
 
-                  {/* Input Area */}
-                  <div className="p-6 border-t">
+                  <div className="p-6 border-t bg-white/30 backdrop-blur">
                     {!isComplete ? (
                       <form onSubmit={handleAnswerSubmit} className="flex gap-2">
                         <Input
                           type="text"
-                          disabled={chatHistory.some(entry => entry.isTyping)}
                           value={currentAnswer}
                           onChange={(e) => setCurrentAnswer(e.target.value)}
                           placeholder="Type your answer here..."
                           className="flex-1"
+                          disabled={chatHistory.some((entry) => entry.isTyping)}
                           autoFocus
                         />
-                        <Button type="submit"
-                                disabled={!currentAnswer.trim() || chatHistory.some(entry => entry.isTyping)}>
+                        <Button
+                          type="submit"
+                          disabled={!currentAnswer.trim() || chatHistory.some((entry) => entry.isTyping)}
+                        >
                           Send
                         </Button>
                       </form>
