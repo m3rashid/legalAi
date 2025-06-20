@@ -4,22 +4,9 @@ import type { Request, Response } from "express";
 
 import { getOpenaiClient } from "config/openai";
 import { errorStatusCodes, successStatusCodes } from "utils/api";
+import { type Placeholder, type PlaceholderType, sessions } from "modules/upload/helpers";
 
-export const sessions: Record<
-  string,
-  { placeholders: Placeholder[]; answers: Record<string, string>; originalFileBuffer: Buffer<ArrayBufferLike> }
-> = {};
-
-type PlaceholderType = "named" | "generic";
-type Placeholder = {
-  id: string;
-  key: string;
-  type: PlaceholderType;
-  context?: string;
-  question: string;
-};
-
-async function formatQuestion(question: string): Promise<string> {
+async function formatQuestionUsingAi(question: string): Promise<string> {
   const client = getOpenaiClient();
 
   const response = await client.chat.completions.create({
@@ -65,10 +52,11 @@ async function findPlaceholders(text: string) {
     });
   });
 
-  const namedPlaceholders = foundPlaceholders.filter((ph) => ph.type === "named");
-
   const finalPlaceholders: Placeholder[] = [];
 
+  const namedPlaceholders = foundPlaceholders.filter((ph) => ph.type === "named");
+
+  // remove duplicates from the named placeholders
   const namedKeysSeen = new Set<string>();
   for (const ph of namedPlaceholders) {
     if (!namedKeysSeen.has(ph.key)) {
@@ -79,10 +67,10 @@ async function findPlaceholders(text: string) {
 
   const genericPlaceholders = foundPlaceholders.filter((ph) => ph.type === "generic");
   const formattedGenericPlaceholders = await Promise.all(
-    genericPlaceholders.map(async (ph) => {
-      if (!ph.context) return ph;
-      const question = await formatQuestion(ph.context);
-      return { ...ph, question } satisfies Placeholder;
+    genericPlaceholders.map(async (placeholder) => {
+      if (!placeholder.context) return placeholder;
+      const question = await formatQuestionUsingAi(placeholder.context);
+      return { ...placeholder, question } satisfies Placeholder;
     })
   );
 
@@ -91,7 +79,7 @@ async function findPlaceholders(text: string) {
   return finalPlaceholders;
 }
 
-async function testFileUploadForPlaceholders(buffer: Buffer<ArrayBufferLike>) {
+async function getUploadedFilePlaceholders(buffer: Buffer<ArrayBufferLike>) {
   const { value: text } = await mammoth.extractRawText({ buffer });
   const placeholders = await findPlaceholders(text);
 
@@ -111,7 +99,7 @@ export async function handleUploadedFile(req: Request, res: Response) {
     return;
   }
 
-  const { sessionId, placeholders } = await testFileUploadForPlaceholders(req.file.buffer);
+  const { sessionId, placeholders } = await getUploadedFilePlaceholders(req.file.buffer);
 
   res.status(successStatusCodes.OK).json({ sessionId, placeholders });
 }
