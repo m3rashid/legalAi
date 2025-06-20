@@ -96,7 +96,9 @@ export function App() {
         addBotMessageWithTypingEffect(placeholders[nextIndex].question);
       } else {
         setIsComplete(true);
-        addBotMessageWithTypingEffect("Excellent! All fields have been completed. Your document is ready to be generated.");
+        addBotMessageWithTypingEffect(
+          "Excellent! All fields have been completed. Your document is ready to be generated."
+        );
       }
     } catch (err: any) {
       setError("Failed to save your answer. Please try again.");
@@ -129,10 +131,7 @@ export function App() {
     }
   };
 
-  const addBotMessageWithTypingEffect = (
-    fullMessage: string,
-    callback?: () => void
-  ) => {
+  const addBotMessageWithTypingEffect = (fullMessage: string, callback?: () => void) => {
     const thinkingTime = Math.random() * 1000 + 500;
     const typingSpeed = 25;
 
@@ -151,7 +150,7 @@ export function App() {
           updated[updated.length - 1] = {
             type: "bot",
             message: current,
-            isTyping: true
+            isTyping: true,
           };
           return updated;
         });
@@ -162,7 +161,7 @@ export function App() {
             const updated = [...prev];
             updated[updated.length - 1] = {
               type: "bot",
-              message: fullMessage
+              message: fullMessage,
             };
             return updated;
           });
@@ -194,7 +193,8 @@ export function App() {
             <h1 className="text-4xl font-bold text-slate-900">Legal Document Assistant</h1>
           </div>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Upload your Word document template and I'll help you fill in all the required information through a simple conversation.
+            Upload your Word document template and I'll help you fill in all the required information through a simple
+            conversation.
           </p>
         </div>
 
@@ -206,6 +206,25 @@ export function App() {
         )}
 
         {/* Upload UI */}
+        {/* <Button
+          onClick={() => {
+            fetch("http://localhost:4000/api/upload/sample")
+              .then((res) => res.blob())
+              .then((blob) => {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", "completed_document.docx");
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode?.removeChild(link);
+              });
+          }}
+        >
+          Generate Sample Document
+        </Button> */}
+
+        {/* File Upload Section */}
         {!sessionId && (
           <Card className="mb-8 border-2 border-dashed border-slate-300 hover:border-blue-400 transition-colors">
             <CardHeader className="text-center pb-4">
@@ -270,8 +289,8 @@ export function App() {
                               isComplete || index < currentIndex
                                 ? "bg-green-100 text-green-800"
                                 : index === currentIndex && !isComplete
-                                  ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
-                                  : "bg-slate-100 text-slate-600"
+                                ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
+                                : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
@@ -328,11 +347,7 @@ export function App() {
                                 : "bg-white/60 text-slate-900 rounded-bl-none shadow border border-white/20"
                             }`}
                           >
-                            {entry.message === "__thinking__" ? (
-                              <TypingDots />
-                            ) : (
-                              entry.message
-                            )}
+                            {entry.message === "__thinking__" ? <TypingDots /> : entry.message}
                           </div>
 
                           {entry.type === "user" && (
