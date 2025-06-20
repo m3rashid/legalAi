@@ -40,7 +40,7 @@ async function findPlaceholders(text: string) {
       // `match` is the full placeholder string, e.g., "[Company Name]" or "[____]"
       const innerText = match.replace(/[\[\]\$]/g, "").trim();
 
-      const context = line.replace(match, `__${innerText}__`); // Highlight the blank
+      const context = line; // Keep the original line with the original key intact
       const type: PlaceholderType = /[a-zA-Z]/.test(innerText) ? "named" : "generic";
 
       foundPlaceholders.push({

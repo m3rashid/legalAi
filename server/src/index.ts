@@ -10,7 +10,7 @@ app.disable("x-powered-by");
 app.use(
   cors({
     credentials: true,
-    origin: [env.CLIENT_URL],
+    origin: ["https://legal-im8m5axit-m3rashids-projects.vercel.app", env.CLIENT_URL],
     preflightContinue: false,
     optionsSuccessStatus: 204,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
