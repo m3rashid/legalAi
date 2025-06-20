@@ -267,7 +267,7 @@ export function App() {
                 <CardContent className="flex-1 flex flex-col p-0">
                   {/* Chat History */}
                   <ScrollArea className="flex-1 p-6">
-                    <div className="space-y-4">
+                    <div className="space-y-4 h-96 overflow-y-scroll">
                       {chatHistory.map((entry, index) => (
                         <div
                           key={index}
@@ -276,7 +276,7 @@ export function App() {
                           {entry.type === "bot" && (
                             <Avatar className="h-8 w-8 bg-blue-600">
                               <AvatarFallback>
-                                <Bot className="h-4 w-4 text-white" />
+                                <Bot className="h-4 w-4" />
                               </AvatarFallback>
                             </Avatar>
                           )}
@@ -290,7 +290,7 @@ export function App() {
                           {entry.type === "user" && (
                             <Avatar className="h-8 w-8 bg-slate-600">
                               <AvatarFallback>
-                                <User className="h-4 w-4 text-white" />
+                                <User className="h-4 w-4" />
                               </AvatarFallback>
                             </Avatar>
                           )}
