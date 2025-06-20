@@ -1,3 +1,5 @@
+import type { PlaceholderType } from "@/app.tsx";
+
 const baseUrl = "http://localhost:4000";
 
 export async function uploadFile(file: File) {
@@ -7,10 +9,10 @@ export async function uploadFile(file: File) {
   const res = await fetch(`${baseUrl}/api/upload`, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Failed to upload file");
 
-  return res.json() as Promise<{ sessionId: string; placeholders: string[] }>;
+  return res.json() as Promise<{ sessionId: string; placeholders: PlaceholderType[] }>;
 }
 
-export async function fillDocument(sessionId: string, placeholder: string, answer: string) {
+export async function fillDocument(sessionId: string, placeholder: PlaceholderType, answer: string) {
   const res = await fetch(`${baseUrl}/api/upload/fill`, {
     method: "POST",
     body: JSON.stringify({ sessionId, placeholder, answer }),

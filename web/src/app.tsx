@@ -11,9 +11,25 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { fillDocument, generateDocument, uploadFile } from "@/apis";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { z } from "zod";
+
+const placeholderSchema = z.union([
+  z.object({
+    type: z.literal("simple"),
+    key: z.string()
+  }),
+  z.object({
+    type: z.literal("contextual"),
+    key: z.string(),
+    context: z.string()
+  })
+]);
+
+export type PlaceholderType = z.infer<typeof placeholderSchema>;
+
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [placeholders, setPlaceholders] = useState<string[]>([]);
+  const [placeholders, setPlaceholders] = useState<PlaceholderType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [chatHistory, setChatHistory] = useState<{ type: "user" | "bot"; message: string }[]>([]);
@@ -39,8 +55,8 @@ export function App() {
       setChatHistory([
         {
           type: "bot",
-          message: `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`,
-        },
+          message: `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`
+        }
       ]);
       setCurrentIndex(0);
       setIsComplete(false);
@@ -73,8 +89,8 @@ export function App() {
           ...prev,
           {
             type: "bot",
-            message: "Excellent! All fields have been completed. Your document is ready to be generated.",
-          },
+            message: "Excellent! All fields have been completed. Your document is ready to be generated."
+          }
         ]);
       }
     } catch (err: any) {
@@ -113,14 +129,15 @@ export function App() {
   const getCurrentQuestion = () => {
     if (!placeholders || placeholders.length === 0) return "";
     const placeholder = placeholders[currentIndex];
+    console.log(placeholder);
     // Make the question more human-friendly
-    let question = placeholder.replace(/[\]$_]/g, " ").trim();
+    let question = placeholder.key.replace(/[\]$_]/g, " ").trim();
     question = question.charAt(0).toUpperCase() + question.slice(1);
     return `What should I put for "${question}"?`;
   };
 
-  const formatPlaceholder = (placeholder: string) => {
-    return placeholder.replace(/[\]$_]/g, " ").trim();
+  const formatPlaceholder = (placeholder: PlaceholderType) => {
+    return placeholder.key.replace(/[\]$_]/g, " ").trim();
   };
 
   return (
@@ -213,8 +230,8 @@ export function App() {
                               index < currentIndex
                                 ? "bg-green-100 text-green-800"
                                 : index === currentIndex && !isComplete
-                                ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
-                                : "bg-slate-100 text-slate-600"
+                                  ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
+                                  : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
