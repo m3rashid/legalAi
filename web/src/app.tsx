@@ -11,34 +11,29 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { fillDocument, generateDocument, uploadFile } from "@/apis";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { z } from "zod";
+type PlaceholderType = "named" | "generic";
+export type Placeholder = {
+  id: string;
+  key: string;
+  type: PlaceholderType;
+  context?: string;
+  question: string;
+}
 
-const placeholderSchema = z.union([
-  z.object({
-    type: z.literal("simple"),
-    key: z.string()
-  }),
-  z.object({
-    type: z.literal("contextual"),
-    key: z.string(),
-    context: z.string()
-  })
-]);
-
-export type PlaceholderType = z.infer<typeof placeholderSchema>;
+type ChatHistory = { type: "user" | "bot"; message: string }
 
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [placeholders, setPlaceholders] = useState<PlaceholderType[]>([]);
+  const [placeholders, setPlaceholders] = useState<Placeholder[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ type: "user" | "bot"; message: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const progress = placeholders.length > 0 ? ((currentIndex + (isComplete ? 1 : 0)) / placeholders.length) * 100 : 0;
+  const progress = placeholders.length > 0 ? ((currentIndex - 1 + (isComplete ? 1 : 0)) / placeholders.length) * 100 : 0;
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,6 +44,7 @@ export function App() {
 
     try {
       const { sessionId, placeholders } = await uploadFile(file);
+      console.log(placeholders);
 
       setSessionId(sessionId);
       setPlaceholders(placeholders);
@@ -56,9 +52,11 @@ export function App() {
         {
           type: "bot",
           message: `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`
-        }
+        },
+        getCurrentQuestion(placeholders)
       ]);
-      setCurrentIndex(0);
+      // Move to next question or complete
+      if (currentIndex < placeholders.length - 1) setCurrentIndex(1);
       setIsComplete(false);
     } catch (err: any) {
       setError(err.message || "Failed to upload and process file.");
@@ -73,7 +71,8 @@ export function App() {
     if (!sessionId) throw new Error("No session ID");
 
     // Add user answer to chat
-    setChatHistory((prev) => [...prev, { type: "user", message: currentAnswer }]);
+    setChatHistory((prev) => [...prev,
+      { type: "user", message: currentAnswer }, getCurrentQuestion(placeholders)]);
 
     try {
       // Send answer to backend
@@ -82,7 +81,8 @@ export function App() {
       setCurrentAnswer("");
 
       // Move to next question or complete
-      if (currentIndex < placeholders.length - 1) setCurrentIndex(currentIndex + 1);
+      console.log(currentIndex);
+      if (currentIndex < placeholders.length) setCurrentIndex(currentIndex + 1);
       else {
         setIsComplete(true);
         setChatHistory((prev) => [
@@ -126,23 +126,27 @@ export function App() {
     }
   };
 
-  const getCurrentQuestion = () => {
-    if (!placeholders || placeholders.length === 0) return "";
+  const getCurrentQuestion = (placeholders: Placeholder[]): ChatHistory => {
+    if (!placeholders || placeholders.length === 0) return {
+      type: "bot",
+      message: ""
+    };
     const placeholder = placeholders[currentIndex];
-    console.log(placeholder);
-    // Make the question more human-friendly
-    let question = placeholder.key.replace(/[\]$_]/g, " ").trim();
-    question = question.charAt(0).toUpperCase() + question.slice(1);
-    return `What should I put for "${question}"?`;
-  };
-
-  const formatPlaceholder = (placeholder: PlaceholderType) => {
-    return placeholder.key.replace(/[\]$_]/g, " ").trim();
+    if (placeholder)
+      return {
+        type: "bot",
+        message: placeholder.question
+      }; else {
+      return {
+        type: "bot",
+        message: ""
+      };
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -221,28 +225,28 @@ export function App() {
 
                   <div>
                     <h4 className="font-medium mb-3">Fields to Fill ({placeholders.length})</h4>
-                    <ScrollArea className="h-48">
+                    <ScrollArea className="h-72">
                       <div className="space-y-2">
                         {placeholders.map((placeholder, index) => (
                           <div
                             key={index}
                             className={`p-2 rounded-lg text-sm ${
-                              index < currentIndex
+                              index < currentIndex - 1
                                 ? "bg-green-100 text-green-800"
-                                : index === currentIndex && !isComplete
+                                : index === currentIndex - 1 && !isComplete
                                   ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
                                   : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              {index < currentIndex ? (
+                              {index < currentIndex - 1 ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : index === currentIndex && !isComplete ? (
+                              ) : index === currentIndex - 1 && !isComplete ? (
                                 <MessageCircle className="h-4 w-4 text-blue-600" />
                               ) : (
                                 <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
                               )}
-                              <span className="truncate">{formatPlaceholder(placeholder)}</span>
+                              <span className="truncate">{placeholder.question}</span>
                             </div>
                           </div>
                         ))}
@@ -269,47 +273,35 @@ export function App() {
                   <ScrollArea className="flex-1 p-6">
                     <div className="space-y-4 h-96 overflow-y-scroll">
                       {chatHistory.map((entry, index) => (
-                        <div
-                          key={index}
-                          className={`flex gap-3 ${entry.type === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          {entry.type === "bot" && (
-                            <Avatar className="h-8 w-8 bg-blue-600">
-                              <AvatarFallback>
-                                <Bot className="h-4 w-4" />
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
+                        entry.message ? (
                           <div
-                            className={`max-w-[80%] p-3 rounded-lg ${
-                              entry.type === "user" ? "bg-blue-600 text-white ml-auto" : "bg-slate-100 text-slate-900"
-                            }`}
+                            key={index}
+                            className={`flex gap-3 ${entry.type === "user" ? "justify-end" : "justify-start"}`}
                           >
-                            {entry.message}
+                            {entry.type === "bot" && (
+                              <Avatar className="h-8 w-8 bg-blue-600">
+                                <AvatarFallback>
+                                  <Bot className="h-4 w-4" />
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                            <div
+                              className={`max-w-[80%] p-3 rounded-lg ${
+                                entry.type === "user" ? "bg-blue-600 text-white ml-auto" : "bg-slate-100 text-slate-900"
+                              }`}
+                            >
+                              {entry.message}
+                            </div>
+                            {entry.type === "user" && (
+                              <Avatar className="h-8 w-8 bg-slate-600">
+                                <AvatarFallback>
+                                  <User className="h-4 w-4" />
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
                           </div>
-                          {entry.type === "user" && (
-                            <Avatar className="h-8 w-8 bg-slate-600">
-                              <AvatarFallback>
-                                <User className="h-4 w-4" />
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
+                        ) : null
                       ))}
-
-                      {/* Current Question */}
-                      {!isComplete && placeholders.length > 0 && (
-                        <div className="flex gap-3">
-                          <Avatar className="h-8 w-8 bg-blue-600">
-                            <AvatarFallback>
-                              <Bot className="h-4 w-4 text-white" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="bg-slate-100 text-slate-900 p-3 rounded-lg max-w-[80%]">
-                            {getCurrentQuestion()}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </ScrollArea>
 
