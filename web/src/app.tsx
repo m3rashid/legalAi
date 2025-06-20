@@ -18,9 +18,9 @@ export type Placeholder = {
   type: PlaceholderType;
   context?: string;
   question: string;
-}
+};
 
-type ChatHistory = { type: "user" | "bot"; message: string }
+type ChatHistory = { type: "user" | "bot"; message: string };
 
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -33,7 +33,8 @@ export function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const progress = placeholders.length > 0 ? ((currentIndex - 1 + (isComplete ? 1 : 0)) / placeholders.length) * 100 : 0;
+  const progress =
+    placeholders.length > 0 ? ((isComplete ? placeholders.length : currentIndex) / placeholders.length) * 100 : 0;
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -48,15 +49,17 @@ export function App() {
 
       setSessionId(sessionId);
       setPlaceholders(placeholders);
+      setCurrentIndex(0); // Start from the first question
+
+      // Set up initial chat history
+      const initialMessage = `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`;
+      const firstQuestion = placeholders.length > 0 ? placeholders[0].question : "";
+
       setChatHistory([
-        {
-          type: "bot",
-          message: `Perfect! I've analyzed your document and found ${placeholders.length} fields that need to be filled. Let's go through them one by one.`
-        },
-        getCurrentQuestion(placeholders)
+        { type: "bot", message: initialMessage },
+        { type: "bot", message: firstQuestion },
       ]);
-      // Move to next question or complete
-      if (currentIndex < placeholders.length - 1) setCurrentIndex(1);
+
       setIsComplete(false);
     } catch (err: any) {
       setError(err.message || "Failed to upload and process file.");
@@ -71,25 +74,28 @@ export function App() {
     if (!sessionId) throw new Error("No session ID");
 
     // Add user answer to chat
-    setChatHistory((prev) => [...prev,
-      { type: "user", message: currentAnswer }, getCurrentQuestion(placeholders)]);
+    setChatHistory((prev) => [...prev, { type: "user", message: currentAnswer }]);
 
     try {
       // Send answer to backend
       await fillDocument(sessionId, placeholders[currentIndex], currentAnswer);
 
+      const nextIndex = currentIndex + 1;
       setCurrentAnswer("");
 
       // Move to next question or complete
-      if (currentIndex < placeholders.length) setCurrentIndex(currentIndex + 1);
-      else {
+      if (nextIndex < placeholders.length) {
+        setCurrentIndex(nextIndex);
+        // Add next question to chat
+        setChatHistory((prev) => [...prev, { type: "bot", message: placeholders[nextIndex].question }]);
+      } else {
         setIsComplete(true);
         setChatHistory((prev) => [
           ...prev,
           {
             type: "bot",
-            message: "Excellent! All fields have been completed. Your document is ready to be generated."
-          }
+            message: "Excellent! All fields have been completed. Your document is ready to be generated.",
+          },
         ]);
       }
     } catch (err: any) {
@@ -126,21 +132,11 @@ export function App() {
   };
 
   const getCurrentQuestion = (placeholders: Placeholder[]): ChatHistory => {
-    if (!placeholders || placeholders.length === 0) return {
-      type: "bot",
-      message: ""
-    };
+    if (!placeholders || placeholders.length === 0) return { type: "bot", message: "" };
+
     const placeholder = placeholders[currentIndex];
-    if (placeholder)
-      return {
-        type: "bot",
-        message: placeholder.question
-      }; else {
-      return {
-        type: "bot",
-        message: ""
-      };
-    }
+    if (placeholder) return { type: "bot", message: placeholder.question };
+    return { type: "bot", message: "" };
   };
 
   return (
@@ -230,17 +226,17 @@ export function App() {
                           <div
                             key={index}
                             className={`p-2 rounded-lg text-sm ${
-                              isComplete || index < currentIndex - 1
+                              isComplete || index < currentIndex
                                 ? "bg-green-100 text-green-800"
-                                : index === currentIndex - 1 && !isComplete
-                                  ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
-                                  : "bg-slate-100 text-slate-600"
+                                : index === currentIndex && !isComplete
+                                ? "bg-blue-100 text-blue-800 ring-2 ring-blue-200"
+                                : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             <div className="flex items-center gap-2">
-                              {isComplete || index < currentIndex - 1 ? (
+                              {isComplete || index < currentIndex ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : index === currentIndex - 1 && !isComplete ? (
+                              ) : index === currentIndex && !isComplete ? (
                                 <MessageCircle className="h-4 w-4 text-blue-600" />
                               ) : (
                                 <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
@@ -271,7 +267,7 @@ export function App() {
                   {/* Chat History */}
                   <ScrollArea className="flex-1 p-6">
                     <div className="space-y-4 h-96 overflow-y-scroll">
-                      {chatHistory.map((entry, index) => (
+                      {chatHistory.map((entry, index) =>
                         entry.message ? (
                           <div
                             key={index}
@@ -300,7 +296,7 @@ export function App() {
                             )}
                           </div>
                         ) : null
-                      ))}
+                      )}
                     </div>
                   </ScrollArea>
 
