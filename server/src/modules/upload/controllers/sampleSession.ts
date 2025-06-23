@@ -1,7 +1,10 @@
+import PizZip from "pizzip";
 import fs from "node:fs/promises";
 import { v4 as uuidv4 } from "uuid";
+import Docxtemplater from "docxtemplater";
 import type { Request, Response } from "express";
 
+import { errorStatusCodes } from "utils/api";
 import type { Placeholder, Session } from "modules/upload/helpers";
 import { generateDocumentFromSession } from "modules/upload/controllers/generateDoc";
 
@@ -72,26 +75,55 @@ const samplePlaceholders: Placeholder[] = [
 ];
 
 async function getSampleSession() {
-  // const buffer = await fs.readFile("/home/genos/code/m3rashid/legalAi/server/modules/upload/controllers/buffer.txt");
   const filePath = "/home/genos/code/m3rashid/legalAi/sample.docx";
 
-  // Read the file and convert it to a buffer (similar to req.file.buffer from multer)
-  const buffer = await fs.readFile(filePath);
+  try {
+    const fileBuffer = await fs.readFile(filePath);
+    const zip = new PizZip(fileBuffer);
 
-  return {
-    sessionId: "session_c5e81b6d-f05a-4f36-9d95-83bb4d478f59",
-    session: {
-      originalFileBuffer: buffer,
-      placeholders: samplePlaceholders,
-      answers: Object.fromEntries(
-        samplePlaceholders.map((p) => [p.id, p.type === "generic" ? `Generic ${uuidv4()}` : `Named ${uuidv4()}`])
-      ),
-    } satisfies Session,
-  };
+    const doc = new Docxtemplater(zip, {
+      delimiters: { start: "$[", end: "]" },
+      parser: (tag) => ({
+        get: (scope) => {
+          console.log(tag, scope);
+          if (scope[tag]) return scope[tag];
+          const withBrackets = `[${tag}]`;
+          if (scope[withBrackets]) return scope[withBrackets];
+          return undefined;
+        },
+      }),
+    });
+
+    // doc.render();
+    const buffer = doc.getZip().generate({ type: "nodebuffer" });
+
+    await fs.writeFile(`/home/genos/code/m3rashid/legalAi/${uuidv4()}.docx`, buffer);
+
+    return {
+      sessionId: "session_c5e81b6d-f05a-4f36-9d95-83bb4d478f59",
+      session: {
+        originalFileBuffer: buffer,
+        placeholders: samplePlaceholders,
+        answers: Object.fromEntries(
+          samplePlaceholders.map((p) => [p.id, p.type === "generic" ? `Generic ${uuidv4()}` : `Named ${uuidv4()}`])
+        ),
+      } satisfies Session,
+    };
+  } catch (err) {
+    console.error("SOME ERROR: ", err);
+    return {
+      sessionId: "session_c5e81b6d-f05a-4f36-9d95-83bb4d478f59",
+      session: { originalFileBuffer: Buffer.from([]), placeholders: [], answers: {} },
+    };
+  }
 }
 
 export async function getSampleSessionController(req: Request, res: Response) {
   const { session, sessionId } = await getSampleSession();
+  if (!session.placeholders.length || !session.answers) {
+    res.status(errorStatusCodes.INTERNAL_SERVER_ERROR).json({ message: "Something went wrong." });
+    return;
+  }
 
   const buffer = await generateDocumentFromSession(sessionId, session);
 
